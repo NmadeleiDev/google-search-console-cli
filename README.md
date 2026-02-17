@@ -161,3 +161,42 @@ gcloud auth application-default login \
 - Use Search Console property formats like `sc-domain:example.com` or URL-prefix properties.
 - `site add` requires write scope (`webmasters`).
 - `analytics query --aggregation-type byProperty` cannot be combined with `page` grouping/filtering.
+
+## Publishing
+
+### Trusted Publishing via GitHub Actions (Recommended)
+
+This repo includes `.github/workflows/publish.yml` that:
+- builds `sdist` + `wheel`
+- publishes to PyPI using OpenID Connect (no API token needed in GitHub secrets)
+
+To enable it:
+
+1. In PyPI, open project settings for `google-search-console-cli`.
+2. Add a **Trusted Publisher** with:
+   - Owner: `NmadeleiDev`
+   - Repository: `google-search-console-cli`
+   - Workflow name: `publish.yml`
+   - Environment name: `pypi`
+3. In GitHub, keep/create environment `pypi` (optional protection rules as you prefer).
+
+Release flow:
+
+1. Bump version in `pyproject.toml`.
+2. Commit and push.
+3. Create and push a tag like `v0.1.1`:
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+The workflow will publish automatically.
+
+### Manual Publishing (Fallback)
+
+```bash
+. .venv/bin/activate.fish
+python -m build
+python -m twine upload dist/*
+```
