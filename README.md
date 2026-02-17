@@ -12,10 +12,37 @@ CLI for Google Search Console using the official Google API Python client.
 
 ## Install (Recommended)
 
-Install with `pipx` so `gsc` is available on your PATH:
+Install with `pipx` so `gsc` is available globally on your PATH.
+
+If you do not have `pipx` yet:
+
+```bash
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+```
+
+Restart your shell, then install:
 
 ```bash
 pipx install google-search-console-cli
+```
+
+Verify:
+
+```bash
+gsc --version
+```
+
+Upgrade later:
+
+```bash
+pipx upgrade google-search-console-cli
+```
+
+Uninstall:
+
+```bash
+pipx uninstall google-search-console-cli
 ```
 
 ## Install From Source
