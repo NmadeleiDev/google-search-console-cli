@@ -6,6 +6,8 @@ CLI for Google Search Console using the official Google API Python client.
 - Native OAuth login: no mandatory `gcloud` setup
 - `pipx`-friendly install (`gsc` available globally)
 - Site operations: list/get/add
+- Sitemap operations: list/get/submit/delete
+- URL inspection: manual index-status checks for specific pages
 - Analytics queries by date/query/page with Search Console filters
 - Output formats: table, json, csv
 - Diagnostics: `gsc doctor`
@@ -108,6 +110,28 @@ gsc site get --site sc-domain:example.com
 gsc site add --site sc-domain:example.com
 ```
 
+### Sitemaps
+```bash
+gsc sitemap list --site sc-domain:example.com
+gsc sitemap get --site sc-domain:example.com --feedpath https://example.com/sitemap.xml
+gsc sitemap submit --site sc-domain:example.com --feedpath https://example.com/sitemap.xml
+gsc sitemap delete --site sc-domain:example.com --feedpath https://example.com/sitemap.xml
+```
+
+### URL Inspection
+```bash
+gsc url inspect --site sc-domain:example.com --url https://example.com/page
+```
+
+Get full response in JSON:
+
+```bash
+gsc url inspect \
+  --site sc-domain:example.com \
+  --url https://example.com/page \
+  --output json
+```
+
 ### Analytics
 ```bash
 gsc analytics query \
@@ -187,6 +211,8 @@ gcloud auth application-default login \
 ## Notes
 - Use Search Console property formats like `sc-domain:example.com` or URL-prefix properties.
 - `site add` requires write scope (`webmasters`).
+- `sitemap submit` and `sitemap delete` require write scope (`webmasters`).
+- `url inspect` uses URL Inspection API for manual status checks only (no general "request indexing" endpoint in Search Console API).
 - `analytics query --aggregation-type byProperty` cannot be combined with `page` grouping/filtering.
 
 ## Publishing

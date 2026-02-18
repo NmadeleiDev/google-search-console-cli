@@ -88,6 +88,91 @@ def _resolve_site(site_url: str | None) -> str:
     )
 
 
+def _sitemap_to_record(item: dict, *, stringify_contents: bool) -> dict:
+    contents = item.get("contents")
+    if stringify_contents and isinstance(contents, list):
+        contents_value: list | str = json.dumps(contents, separators=(",", ":"))
+    else:
+        contents_value = contents
+
+    return {
+        "path": item.get("path"),
+        "type": item.get("type"),
+        "isPending": item.get("isPending"),
+        "isSitemapsIndex": item.get("isSitemapsIndex"),
+        "lastSubmitted": item.get("lastSubmitted"),
+        "lastDownloaded": item.get("lastDownloaded"),
+        "warnings": item.get("warnings"),
+        "errors": item.get("errors"),
+        "contents": contents_value,
+    }
+
+
+def _inspection_to_record(
+    inspection_result: dict,
+    *,
+    inspection_url: str,
+    site_url: str,
+    stringify_nested: bool,
+) -> dict:
+    index_status = inspection_result.get("indexStatusResult", {})
+    if not isinstance(index_status, dict):
+        index_status = {}
+
+    amp_result = inspection_result.get("ampResult", {})
+    if not isinstance(amp_result, dict):
+        amp_result = {}
+
+    mobile_result = inspection_result.get("mobileUsabilityResult", {})
+    if not isinstance(mobile_result, dict):
+        mobile_result = {}
+
+    rich_results = inspection_result.get("richResultsResult", {})
+    if not isinstance(rich_results, dict):
+        rich_results = {}
+
+    sitemap = index_status.get("sitemap")
+    referring_urls = index_status.get("referringUrls")
+    amp_issues = amp_result.get("issues")
+    mobile_issues = mobile_result.get("issues")
+    rich_items = rich_results.get("detectedItems")
+
+    if stringify_nested:
+        if isinstance(sitemap, list):
+            sitemap = json.dumps(sitemap, separators=(",", ":"))
+        if isinstance(referring_urls, list):
+            referring_urls = json.dumps(referring_urls, separators=(",", ":"))
+        if isinstance(amp_issues, list):
+            amp_issues = json.dumps(amp_issues, separators=(",", ":"))
+        if isinstance(mobile_issues, list):
+            mobile_issues = json.dumps(mobile_issues, separators=(",", ":"))
+        if isinstance(rich_items, list):
+            rich_items = json.dumps(rich_items, separators=(",", ":"))
+
+    return {
+        "siteUrl": site_url,
+        "inspectionUrl": inspection_url,
+        "inspectionResultLink": inspection_result.get("inspectionResultLink"),
+        "verdict": index_status.get("verdict"),
+        "coverageState": index_status.get("coverageState"),
+        "indexingState": index_status.get("indexingState"),
+        "robotsTxtState": index_status.get("robotsTxtState"),
+        "pageFetchState": index_status.get("pageFetchState"),
+        "lastCrawlTime": index_status.get("lastCrawlTime"),
+        "crawledAs": index_status.get("crawledAs"),
+        "googleCanonical": index_status.get("googleCanonical"),
+        "userCanonical": index_status.get("userCanonical"),
+        "sitemap": sitemap,
+        "referringUrls": referring_urls,
+        "ampVerdict": amp_result.get("verdict"),
+        "ampIssues": amp_issues,
+        "mobileUsabilityVerdict": mobile_result.get("verdict"),
+        "mobileUsabilityIssues": mobile_issues,
+        "richResultsVerdict": rich_results.get("verdict"),
+        "richResultsItems": rich_items,
+    }
+
+
 @cli.group()
 def auth() -> None:
     """Authenticate and inspect credentials."""
@@ -323,6 +408,159 @@ def site_add(site_url: str | None) -> None:
     service = build_search_console_service(write=True)
     service.sites().add(siteUrl=resolved_site).execute()
     click.echo(f"Added site: {resolved_site}")
+
+
+@cli.group()
+def sitemap() -> None:
+    """Manage Search Console sitemaps."""
+
+
+@sitemap.command("list")
+@click.option("--site", "site_url", required=False, help="Site URL, e.g. sc-domain:example.com")
+@click.option(
+    "--sitemap-index",
+    default=None,
+    help="Optional sitemap index URL/path filter passed to the API.",
+)
+@click.option("--output", "output_format", type=click.Choice(["table", "json", "csv"]), default="table")
+@click.option("--csv-path", type=click.Path(dir_okay=False, writable=True, path_type=str), default=None)
+@command_errors
+def sitemap_list(
+    site_url: str | None,
+    sitemap_index: str | None,
+    output_format: str,
+    csv_path: str | None,
+) -> None:
+    """List sitemaps for a property."""
+    resolved_site = _resolve_site(site_url)
+    service = build_search_console_service(write=False)
+
+    request_params = {"siteUrl": resolved_site}
+    if sitemap_index:
+        request_params["sitemapIndex"] = sitemap_index
+
+    response = service.sitemaps().list(**request_params).execute()
+    entries = response.get("sitemap", [])
+    records = [
+        _sitemap_to_record(item, stringify_contents=output_format != "json")
+        for item in entries
+    ]
+    click.echo(render_records(records, output_format=output_format, csv_path=csv_path))
+
+
+@sitemap.command("get")
+@click.option("--site", "site_url", required=False, help="Site URL, e.g. sc-domain:example.com")
+@click.option(
+    "--feedpath",
+    "--path",
+    "feedpath",
+    required=True,
+    help="Sitemap URL/path, e.g. https://example.com/sitemap.xml",
+)
+@click.option("--output", "output_format", type=click.Choice(["table", "json", "csv"]), default="json")
+@click.option("--csv-path", type=click.Path(dir_okay=False, writable=True, path_type=str), default=None)
+@command_errors
+def sitemap_get(site_url: str | None, feedpath: str, output_format: str, csv_path: str | None) -> None:
+    """Get one sitemap by feed path."""
+    resolved_site = _resolve_site(site_url)
+    service = build_search_console_service(write=False)
+    item = service.sitemaps().get(siteUrl=resolved_site, feedpath=feedpath).execute()
+    records = [_sitemap_to_record(item, stringify_contents=output_format != "json")]
+    click.echo(render_records(records, output_format=output_format, csv_path=csv_path))
+
+
+@sitemap.command("submit")
+@click.option("--site", "site_url", required=False, help="Site URL, e.g. sc-domain:example.com")
+@click.option(
+    "--feedpath",
+    "--path",
+    "feedpath",
+    required=True,
+    help="Sitemap URL/path, e.g. https://example.com/sitemap.xml",
+)
+@command_errors
+def sitemap_submit(site_url: str | None, feedpath: str) -> None:
+    """Submit (or resubmit) a sitemap."""
+    resolved_site = _resolve_site(site_url)
+    service = build_search_console_service(write=True)
+    service.sitemaps().submit(siteUrl=resolved_site, feedpath=feedpath).execute()
+    click.echo(f"Submitted sitemap: {feedpath}")
+
+
+@sitemap.command("delete")
+@click.option("--site", "site_url", required=False, help="Site URL, e.g. sc-domain:example.com")
+@click.option(
+    "--feedpath",
+    "--path",
+    "feedpath",
+    required=True,
+    help="Sitemap URL/path, e.g. https://example.com/sitemap.xml",
+)
+@command_errors
+def sitemap_delete(site_url: str | None, feedpath: str) -> None:
+    """Delete a sitemap from a property."""
+    resolved_site = _resolve_site(site_url)
+    service = build_search_console_service(write=True)
+    service.sitemaps().delete(siteUrl=resolved_site, feedpath=feedpath).execute()
+    click.echo(f"Deleted sitemap: {feedpath}")
+
+
+@cli.group()
+def url() -> None:
+    """Inspect URL index status in Search Console."""
+
+
+@url.command("inspect")
+@click.option("--site", "site_url", required=False, help="Site URL, e.g. sc-domain:example.com")
+@click.option(
+    "--url",
+    "inspection_url",
+    required=True,
+    help="Fully-qualified URL to inspect, e.g. https://example.com/page",
+)
+@click.option(
+    "--language-code",
+    default="en-US",
+    show_default=True,
+    help="BCP-47 language code for issue messages.",
+)
+@click.option("--output", "output_format", type=click.Choice(["table", "json", "csv"]), default="table")
+@click.option("--csv-path", type=click.Path(dir_okay=False, writable=True, path_type=str), default=None)
+@command_errors
+def url_inspect(
+    site_url: str | None,
+    inspection_url: str,
+    language_code: str,
+    output_format: str,
+    csv_path: str | None,
+) -> None:
+    """Inspect index status of one URL."""
+    resolved_site = _resolve_site(site_url)
+    service = build_search_console_service(write=False)
+    body = {
+        "inspectionUrl": inspection_url,
+        "siteUrl": resolved_site,
+        "languageCode": language_code,
+    }
+    response = service.urlInspection().index().inspect(body=body).execute()
+    inspection_result = response.get("inspectionResult", {})
+    if not isinstance(inspection_result, dict):
+        inspection_result = {}
+
+    if output_format == "json":
+        record = dict(inspection_result)
+        record["siteUrl"] = resolved_site
+        record["inspectionUrl"] = inspection_url
+        click.echo(render_records([record], output_format=output_format, csv_path=csv_path))
+        return
+
+    record = _inspection_to_record(
+        inspection_result,
+        inspection_url=inspection_url,
+        site_url=resolved_site,
+        stringify_nested=True,
+    )
+    click.echo(render_records([record], output_format=output_format, csv_path=csv_path))
 
 
 @cli.group()

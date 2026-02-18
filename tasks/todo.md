@@ -138,3 +138,41 @@
 - [x] Add tests for new auth/config/doctor/default-site flows.
 - [x] Update README for pipx-first installation and new onboarding flow.
 - [x] Run full test suite and live smoke tests.
+
+## Sitemaps Feature Plan (2026-02-18)
+
+### Goal
+- Add sitemap management to CLI for Search Console properties: list/get/submit/delete.
+
+### API Facts (official docs)
+- `sitemaps.list`: `GET /webmasters/v3/sites/{siteUrl}/sitemaps`, optional `sitemapIndex`, read or write scope.
+- `sitemaps.get`: `GET /webmasters/v3/sites/{siteUrl}/sitemaps/{feedpath}`, read or write scope.
+- `sitemaps.submit`: `PUT /webmasters/v3/sites/{siteUrl}/sitemaps/{feedpath}`, write scope.
+- `sitemaps.delete`: `DELETE /webmasters/v3/sites/{siteUrl}/sitemaps/{feedpath}`, write scope.
+- Sitemap fields include `path`, `lastSubmitted`, `lastDownloaded`, `isPending`, `isSitemapsIndex`, `type`, `warnings`, `errors`, `contents`.
+
+### Execution Checklist (Sitemaps)
+- [x] Add `gsc sitemap` command group with `list/get/submit/delete`.
+- [x] Reuse default-site resolution (`--site` optional with config fallback).
+- [x] Add output support for sitemap list/get (`table|json|csv`).
+- [x] Add unit/CLI tests for sitemap commands and scope usage.
+- [x] Update README usage with sitemap examples and notes.
+- [x] Run test suite and manual live smoke tests against real credentials.
+
+## URL Inspection Feature Plan (2026-02-18)
+
+### Goal
+- Add manual URL index-status check via Search Console URL Inspection API.
+
+### API Facts (official docs)
+- `urlInspection.index.inspect`: `POST https://searchconsole.googleapis.com/v1/urlInspection/index:inspect`.
+- Request body fields: `inspectionUrl` (required), `siteUrl` (required), `languageCode` (optional, default `en-US`).
+- Scopes: `webmasters.readonly` or `webmasters`.
+
+### Execution Checklist (URL Inspection)
+- [x] Add `gsc url inspect` command for inspecting one URL in a property.
+- [x] Reuse default-site resolution (`--site` optional with config fallback).
+- [x] Support `table|json|csv` output with stable field mapping.
+- [x] Add unit/CLI tests for request wiring and default-site behavior.
+- [x] Update README docs for URL inspection and current feature set.
+- [x] Run full tests and live smoke test against real credentials/property.
