@@ -176,3 +176,16 @@
 - [x] Add unit/CLI tests for request wiring and default-site behavior.
 - [x] Update README docs for URL inspection and current feature set.
 - [x] Run full tests and live smoke test against real credentials/property.
+
+## Skill Docs Plan (2026-02-26)
+
+### Goal
+- Add an in-repo skill document describing how to use this CLI end to end.
+
+### Execution Checklist (Skill Docs)
+- [x] Create `skills/google-search-console/` directory.
+- [x] Add `skills/google-search-console/SKILL.md` with:
+- [x] Google Cloud OAuth Desktop client creation steps.
+- [x] CLI authentication flow and troubleshooting.
+- [x] Complete command reference with options and examples.
+- [x] Verify command list against `gsc_cli/cli.py`.
